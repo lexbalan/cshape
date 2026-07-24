@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cshape"
+version = "0.1.0"
+description = "A dependency-free C AST + printer: build a tree in Python, get C11 source back"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.8"
+authors = [{ name = "Alex Balan", email = "outsiders.b@gmail.com" }]
+keywords = ["c", "codegen", "code-generation", "ast", "transpiler", "compiler"]
+classifiers = [
+	"Development Status :: 3 - Alpha",
+	"Intended Audience :: Developers",
+	"Programming Language :: C",
+	"Programming Language :: Python :: 3",
+	"Topic :: Software Development :: Code Generators",
+	"Topic :: Software Development :: Compilers",
+]
+
+[tool.setuptools]
+py-modules = ["cshape"]
