@@ -20,14 +20,14 @@ pip install cshape
 from cshape import *
 
 func = CStmtDefFunc(
-	id_str="add",
-	type=CTypeFunc(
-		params=[CField(id_str="a", type=CTypeNamed("int")),
-		        CField(id_str="b", type=CTypeNamed("int"))],
-		to=CTypeNamed("int"),
+	id="add",
+	type=CTypeFunction(
+		params=[CField(id="a", type=CTypeIdentifier("int")),
+		        CField(id="b", type=CTypeIdentifier("int"))],
+		to=CTypeIdentifier("int"),
 	),
 	block=CStmtBlock([
-		CStmtReturn(CValueAdd(CValueNamed("a"), CValueNamed("b"))),
+		CStmtReturn(CValueAdd(CValueIdentifier("a"), CValueIdentifier("b"))),
 	]),
 )
 

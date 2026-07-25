@@ -84,9 +84,9 @@ def wrap_if(x, cond):
 	return "(%s)" % x if cond else x
 
 
-def str_specs(specs):
+def str_specs(specifiers):
 	s = ''
-	for opt in specs:
+	for opt in specifiers:
 		s += opt + ' '
 	return s
 
@@ -147,11 +147,11 @@ def str_gcc_attributes(attributes):
 
 
 class CField():
-	def __init__(self, id_str, type, specs=None, nl=0):
+	def __init__(self, id, type, specifiers=None, nl=0):
 		#assert(isinstance(type, CType))
-		self.id_str = id_str
+		self.id = id
 		self.type = type
-		self.specs = specs if specs != None else []
+		self.specifiers = specifiers if specifiers != None else []
 		self.nl = nl
 
 
@@ -165,12 +165,12 @@ class CType():
 		return "<type> " + text
 
 
-class CTypeNamed(CType):
-	def __init__(self, id_str, specs=None):
-		assert(isinstance(id_str, str))
+class CTypeIdentifier(CType):
+	def __init__(self, id, specifiers=None):
+		assert(isinstance(id, str))
 		super().__init__()
-		self.id_str = id_str
-		self.specs = specs if specs != None else []
+		self.id = id
+		self.specifiers = specifiers if specifiers != None else []
 		self.precedence = 0
 
 	def to_str(self, text='', with_qualifiers=True):
@@ -178,22 +178,22 @@ class CTypeNamed(CType):
 		sstr = ''
 		if with_qualifiers:
 			# for: const, volatile, restrict
-			sstr += str_specs(self.specs)
-		return sstr + self.id_str + with_space(text)
+			sstr += str_specs(self.specifiers)
+		return sstr + self.id + with_space(text)
 
 
 class CTypePointer(CType):
-	def __init__(self, to, specs=None):
+	def __init__(self, to, specifiers=None):
 		super().__init__()
 		self.to = to
-		self.specs = specs if specs != None else []
+		self.specifiers = specifiers if specifiers != None else []
 		self.precedence = 1
 
 	def to_str(self, text='', with_qualifiers=True):
 		# "*volatile p"
 		sstr = '*'
 		if with_qualifiers:
-			sstr += str_specs(self.specs)
+			sstr += str_specs(self.specifiers)
 		sstr += text
 		sstr = wrap_if(sstr, self.to.precedence > self.precedence)
 		sstr = str_ctype(self.to, sstr)
@@ -201,31 +201,31 @@ class CTypePointer(CType):
 
 
 class CTypeArray(CType):
-	def __init__(self, of, volume=None, specs=[]):
+	def __init__(self, item_type, size=None, specifiers=[]):
 		super().__init__()
-		of.specs = specs  # array specs is array item specs (!)
-		self.of = of
-		self.volume = volume
-		self.specs = specs if specs != None else []
+		item_type.specifiers = specifiers  # array specs is array item specs (!)
+		self.item_type = item_type
+		self.size = size
+		self.specifiers = specifiers if specifiers != None else []
 		self.precedence = 2
 
 	def to_str(self, text='', with_qualifiers=True):
 		text = text + '['
-		if self.volume != None:
-			text += str_cvalue(self.volume)
+		if self.size != None:
+			text += str_cvalue(self.size)
 		text += ']'
-		text = wrap_if(text, self.of.precedence > self.precedence)
-		text = str_ctype(self.of, text)
+		text = wrap_if(text, self.item_type.precedence > self.precedence)
+		text = str_ctype(self.item_type, text)
 		return text
 
 
-class CTypeFunc(CType):
-	def __init__(self, params, to, volume=None, extra_args=False, specs=None):
+class CTypeFunction(CType):
+	def __init__(self, params, to, size=None, extra_args=False, specifiers=None):
 		super().__init__()
 		self.params = params
 		self.to = to
 		self.extra_args = extra_args
-		self.specs = specs if specs != None else []
+		self.specifiers = specifiers if specifiers != None else []
 		self.precedence = 3
 
 	def to_str(self, text='', with_qualifiers=True):
@@ -234,7 +234,7 @@ class CTypeFunc(CType):
 		params = self.params
 		while i < len(params):
 			param = params[i]
-			p = str_ctype(param.type, text=param.id_str)
+			p = str_ctype(param.type, text=param.id)
 			if i > 0:
 				params_text += ', ' + p
 			else:
@@ -253,11 +253,11 @@ class CTypeFunc(CType):
 
 
 class CTypeStruct(CType):
-	def __init__(self, fields, tag, specs=None):
+	def __init__(self, fields, tag, specifiers=None):
 		super().__init__()
 		self.fields = fields
 		self.tag = tag
-		self.specs = specs if specs != None else []
+		self.specifiers = specifiers if specifiers != None else []
 		self.precedence = 0
 
 	def to_str(self, text='', with_qualifiers=True):
@@ -283,7 +283,7 @@ class CTypeStruct(CType):
 						sstr += ' '
 
 				sstr += str_nl_indent(field.nl)
-				sstr += str_ctype(field.type, text=field.id_str) + ';'
+				sstr += str_ctype(field.type, text=field.id) + ';'
 				i = i + 1
 		else:
 			sstr += 'uint8_t __placeholder;'
@@ -293,7 +293,8 @@ class CTypeStruct(CType):
 
 
 
-class CTypeEnumItem():
+
+class CEnumItem():
 	def __init__(self, id, value=None):
 		assert(isinstance(id, str))
 		assert(value == None or isinstance(value, CValue))
@@ -309,11 +310,11 @@ class CTypeEnumItem():
 
 
 class CTypeEnum(CType):
-	def __init__(self, items, tag='', specs=None):
+	def __init__(self, items, tag='', specifiers=None):
 		super().__init__()
 		self.items = items
 		self.tag = tag
-		self.specs = specs if specs != None else []
+		self.specifiers = specifiers if specifiers != None else []
 		self.precedence = 0
 
 	def to_str(self, text='', with_qualifiers=True):
@@ -330,7 +331,7 @@ class CTypeEnum(CType):
 
 		while i < nitems:
 			item = self.items[i]
-			assert(isinstance(item, CTypeEnumItem))
+			assert(isinstance(item, CEnumItem))
 			if item.nl > 0:
 				nl_end = 1
 
@@ -398,14 +399,14 @@ class CValue():
 		self.mark = None
 
 
-class CValueNamed(CValue):
-	def __init__(self, id_str):
+class CValueIdentifier(CValue):
+	def __init__(self, id):
 		super().__init__()
-		self.id_str = id_str
+		self.id = id
 		self.precedence = 15
 
 	def __str__(self):
-		return self.id_str
+		return self.id
 
 
 
@@ -559,7 +560,7 @@ class CValueStruct(CValue):
 
 
 
-class CValueSubexpr(CValue):
+class CValueParen(CValue):
 	def __init__(self, value):
 		assert(isinstance(value, CValue))
 		super().__init__()
@@ -584,30 +585,30 @@ class CValueCall(CValue):
 		return '%s(%s)' % (str_cvalue(self.left, ext_precedence=self.precedence), print_list_items(self.args, str_cvalue))
 
 
-class CValueAccess(CValue):
-	def __init__(self, left, field_id_str):
-		assert(isinstance(field_id_str, str))
+class CValueFieldAccess(CValue):
+	def __init__(self, left, field_id):
+		assert(isinstance(field_id, str))
 		assert(isinstance(left, CValue))
 		super().__init__()
 		self.left = left
-		self.field_id_str = field_id_str
+		self.field_id = field_id
 		self.precedence = 14
 
 	def __str__(self):
-		return '%s.%s' % (str_cvalue(self.left, ext_precedence=self.precedence), self.field_id_str)
+		return '%s.%s' % (str_cvalue(self.left, ext_precedence=self.precedence), self.field_id)
 
 
-class CValueAccessPtr(CValue):
-	def __init__(self, left, field_id_str):
-		assert(isinstance(field_id_str, str))
+class CValuePtrFieldAccess(CValue):
+	def __init__(self, left, field_id):
+		assert(isinstance(field_id, str))
 		assert(isinstance(left, CValue))
 		super().__init__()
 		self.left = left
-		self.field_id_str = field_id_str
+		self.field_id = field_id
 		self.precedence = 14
 
 	def __str__(self):
-		return '%s->%s' % (str_cvalue(self.left, ext_precedence=self.precedence), self.field_id_str)
+		return '%s->%s' % (str_cvalue(self.left, ext_precedence=self.precedence), self.field_id)
 
 
 class CValueIndex(CValue):
@@ -638,7 +639,7 @@ class CValueCast(CValue):
 		return '(%s)%s' % (str_ctype(self.type, with_qualifiers=False), vstr)
 
 
-class CValueRef(CValue):
+class CValueReference(CValue):
 	def __init__(self, value):
 		assert(isinstance(value, CValue))
 		super().__init__()
@@ -649,7 +650,7 @@ class CValueRef(CValue):
 		return '&%s' % str_cvalue(self.value, ext_precedence=self.precedence)
 
 
-class CValueDeref(CValue):
+class CValueDereference(CValue):
 	def __init__(self, value):
 		assert(isinstance(value, CValue))
 		super().__init__()
@@ -660,7 +661,7 @@ class CValueDeref(CValue):
 		return '*%s' % str_cvalue(self.value, ext_precedence=self.precedence)
 
 
-class CValueInc(CValue):
+class CValueIncrement(CValue):
 	def __init__(self, value):
 		assert(isinstance(value, CValue))
 		super().__init__()
@@ -671,7 +672,7 @@ class CValueInc(CValue):
 		return '++%s' % (str_cvalue(self.value, ext_precedence=self.precedence))
 
 
-class CValueDec(CValue):
+class CValueDecrement(CValue):
 	def __init__(self, value):
 		assert(isinstance(value, CValue))
 		super().__init__()
@@ -682,7 +683,7 @@ class CValueDec(CValue):
 		return '--%s' % str_cvalue(self.value, ext_precedence=self.precedence)
 
 
-class CValuePositive(CValue):
+class CValueUnaryPlus(CValue):
 	def __init__(self, value):
 		assert(isinstance(value, CValue))
 		super().__init__()
@@ -693,7 +694,7 @@ class CValuePositive(CValue):
 		return '+%s' % (str_cvalue(self.value, ext_precedence=self.precedence))
 
 
-class CValueNegative(CValue):
+class CValueUnaryMinus(CValue):
 	def __init__(self, value):
 		assert(isinstance(value, CValue))
 		super().__init__()
@@ -704,7 +705,7 @@ class CValueNegative(CValue):
 		return '-%s' % (str_cvalue(self.value, ext_precedence=self.precedence))
 
 
-class CValueNotLogical(CValue):
+class CValueLogicalNot(CValue):
 	def __init__(self, value):
 		assert(isinstance(value, CValue))
 		super().__init__()
@@ -715,7 +716,7 @@ class CValueNotLogical(CValue):
 		return '!%s' % (str_cvalue(self.value, ext_precedence=self.precedence))
 
 
-class CValueNotBitwise(CValue):
+class CValueBitwiseNot(CValue):
 	def __init__(self, value):
 		assert(isinstance(value, CValue))
 		super().__init__()
@@ -778,7 +779,7 @@ class CValueDiv(CValue):
 		return '%s / %s' % (lx, rx)
 
 
-class CValueRem(CValue):
+class CValueMod(CValue):
 	def __init__(self, left, right):
 		assert(isinstance(left, CValue))
 		assert(isinstance(right, CValue))
@@ -823,7 +824,7 @@ class CValueSub(CValue):
 		return '%s - %s' % (lx, rx)
 
 
-class CValueShl(CValue):
+class CValueShiftLeft(CValue):
 	def __init__(self, left, right):
 		assert(isinstance(left, CValue))
 		assert(isinstance(right, CValue))
@@ -847,7 +848,7 @@ class CValueShl(CValue):
 		return '%s << %s' % (lx, rx)
 
 
-class CValueShr(CValue):
+class CValueShiftRight(CValue):
 	def __init__(self, left, right):
 		assert(isinstance(left, CValue))
 		assert(isinstance(right, CValue))
@@ -970,7 +971,7 @@ def select_prio_plus(sp, xp, n=0):
 	return sp
 
 
-class CValueAndBitwise(CValue):
+class CValueBitwiseAnd(CValue):
 	def __init__(self, left, right):
 		assert(isinstance(left, CValue))
 		assert(isinstance(right, CValue))
@@ -985,7 +986,7 @@ class CValueAndBitwise(CValue):
 		return '%s & %s' % (lx, rx)
 
 
-class CValueXorBitwise(CValue):
+class CValueBitwiseXor(CValue):
 	def __init__(self, left, right):
 		assert(isinstance(left, CValue))
 		assert(isinstance(right, CValue))
@@ -1000,7 +1001,7 @@ class CValueXorBitwise(CValue):
 		return '%s ^ %s' % (lx, rx)
 
 
-class CValueOrBitwise(CValue):
+class CValueBitwiseOr(CValue):
 	def __init__(self, left, right):
 		assert(isinstance(left, CValue))
 		assert(isinstance(right, CValue))
@@ -1015,7 +1016,7 @@ class CValueOrBitwise(CValue):
 		return '%s | %s' % (lx, rx)
 
 
-class CValueAndLogical(CValue):
+class CValueLogicalAnd(CValue):
 	def __init__(self, left, right):
 		assert(isinstance(left, CValue))
 		assert(isinstance(right, CValue))
@@ -1030,7 +1031,7 @@ class CValueAndLogical(CValue):
 		return '%s && %s' % (lx, rx)
 
 
-class CValueOrLogical(CValue):
+class CValueLogicalOr(CValue):
 	def __init__(self, left, right):
 		assert(isinstance(left, CValue))
 		assert(isinstance(right, CValue))
@@ -1097,7 +1098,7 @@ class CValueVaCopy(CValue):
 
 
 # string concat
-class CValueCat(CValue):
+class CValueStringConcat(CValue):
 	def __init__(self, left, right):
 		assert(isinstance(left, CValue))
 		assert(isinstance(right, CValue))
@@ -1146,7 +1147,7 @@ class CStmt():
 		pass
 
 
-class CStmtCommentLine(CStmt):
+class CStmtLineComment(CStmt):
 	def __init__(self, lines):
 		assert(isinstance(lines, list))
 		super().__init__()
@@ -1167,7 +1168,7 @@ class CStmtCommentLine(CStmt):
 		return sstr
 
 
-class CStmtCommentBlock(CStmt):
+class CStmtBlockComment(CStmt):
 	def __init__(self, text):
 		assert(isinstance(text, str))
 		super().__init__()
@@ -1200,7 +1201,7 @@ class CStmtBlock(CStmt):
 		return sstr
 
 
-class CStmtValueExpr(CStmt):
+class CStmtExpr(CStmt):
 	def __init__(self, value):
 		assert(isinstance(value, CValue))
 		super().__init__()
@@ -1212,7 +1213,7 @@ class CStmtValueExpr(CStmt):
 		return sstr + str_cvalue(self.value) + ';'
 
 
-class CStmtValueAssign(CStmt):
+class CStmtAssignment(CStmt):
 	def __init__(self, lvalue, rvalue):
 		assert(isinstance(lvalue, CValue))
 		assert(isinstance(rvalue, CValue))
@@ -1225,7 +1226,7 @@ class CStmtValueAssign(CStmt):
 		return sstr + "%s = %s;" % (str_cvalue(self.lvalue), str_cvalue(self.rvalue))
 
 
-class CStmtInc(CStmt):
+class CStmtIncrement(CStmt):
 	def __init__(self, value):
 		assert(isinstance(value, CValue))
 		super().__init__()
@@ -1235,7 +1236,7 @@ class CStmtInc(CStmt):
 		return str_nl_indent(self.nl) + "++%s;" % str_cvalue(self.value)
 
 
-class CStmtDec(CStmt):
+class CStmtDecrement(CStmt):
 	def __init__(self, value):
 		assert(isinstance(value, CValue))
 		super().__init__()
@@ -1247,7 +1248,7 @@ class CStmtDec(CStmt):
 
 class CStmtDeclType(CStmt):
 	def __init__(self, type, attributes=None):
-		assert(isinstance(type, CTypeNamed))
+		assert(isinstance(type, CTypeIdentifier))
 		super().__init__()
 		self.type = type
 		self.attributes = attributes
@@ -1260,33 +1261,33 @@ class CStmtDeclType(CStmt):
 
 
 class CStmtDefType(CStmt):
-	def __init__(self, id_str, type, attributes=None):
-		assert(isinstance(id_str, str))
+	def __init__(self, id, type, attributes=None):
+		assert(isinstance(id, str))
 		assert(isinstance(type, CType))
 		super().__init__()
-		self.id_str = id_str
+		self.id = id
 		self.type = type
 		self.attributes = attributes
 
 	def __str__(self):
 		sstr = str_nl_indent(self.nl)
 		sstr += str_gcc_attributes(self.attributes)
-		sstr += 'typedef %s;' % self.type.to_str(text=self.id_str)
+		sstr += 'typedef %s;' % self.type.to_str(text=self.id)
 		return sstr
 
 
 
 class CStmtDefVar(CStmt):
-	def __init__(self, id_str, type, init_value=None, storage_class='', attributes=None):
-		assert(isinstance(id_str, str))
+	def __init__(self, id, type, initializer=None, storage_class='', attributes=None):
+		assert(isinstance(id, str))
 		assert(isinstance(type, CType))
-		if init_value != None:
-			assert(isinstance(init_value, CValue))
+		if initializer != None:
+			assert(isinstance(initializer, CValue))
 		super().__init__()
-		self.id_str = id_str
+		self.id = id
 		self.type = type
 		self.storage = storage_class
-		self.init_value = init_value
+		self.initializer = initializer
 		self.attributes = attributes
 
 	def __str__(self):
@@ -1295,22 +1296,22 @@ class CStmtDefVar(CStmt):
 		if self.storage not in (None, ''):
 			sstr += self.storage + ' '
 		#mass
-		sstr += str_ctype(self.type, text=self.id_str)
-		if self.init_value != None:
-			sstr += ' = %s' % str_cvalue(self.init_value)
+		sstr += str_ctype(self.type, text=self.id)
+		if self.initializer != None:
+			sstr += ' = %s' % str_cvalue(self.initializer)
 		return sstr + ';'
 
 
 
 class CStmtDefFunc(CStmt):
-	def __init__(self, id_str, type, block, storage_class='', attributes=None):
-		assert(isinstance(id_str, str))
+	def __init__(self, id, type, block, storage_class='', attributes=None):
+		assert(isinstance(id, str))
 		assert(isinstance(type, CType))
 		assert(isinstance(block, CStmtBlock))
 		#if init_value != None:
 		#	assert(isinstance(init_value, CValue))
 		super().__init__()
-		self.id_str = id_str
+		self.id = id
 		self.type = type
 		self.storage = storage_class
 		self.block = block
@@ -1322,7 +1323,7 @@ class CStmtDefFunc(CStmt):
 		sstr += str_gcc_attributes(self.attributes)
 		if self.storage not in (None, ''):
 			sstr += self.storage + ' '
-		sstr += self.type.to_str(text=self.id_str)
+		sstr += self.type.to_str(text=self.id)
 
 		if styleguide['LINE_BREAK_BEFORE_FUNC_BRACE']:
 			sstr += str_nl_indent()
@@ -1335,49 +1336,49 @@ class CStmtDefFunc(CStmt):
 
 
 class CStmtIf(CStmt):
-	def __init__(self, value_cond, block_then, block_else):
-		assert(isinstance(value_cond, CValue))
-		assert(isinstance(block_then, CStmtBlock))
-		if block_else:
-			assert((isinstance(block_else, CStmtBlock) or isinstance(block_else, CStmtIf)))
+	def __init__(self, condition, then_block, else_block):
+		assert(isinstance(condition, CValue))
+		assert(isinstance(then_block, CStmtBlock))
+		if else_block:
+			assert((isinstance(else_block, CStmtBlock) or isinstance(else_block, CStmtIf)))
 		super().__init__()
-		self.value_cond = value_cond
-		self.block_then = block_then
-		self.block_else = block_else
+		self.condition = condition
+		self.then_block = then_block
+		self.else_block = else_block
 
 	def __str__(self):
 		sstr = str_nl_indent(self.nl)
-		sstr += "if (%s)" % str_cvalue(self.value_cond)
+		sstr += "if (%s)" % str_cvalue(self.condition)
 		if styleguide['LINE_BREAK_BEFORE_BLOCK_BRACE']:
 			sstr += str_nl_indent()
 		else:
 			sstr += ' '
-		sstr += str(self.block_then)
-		if self.block_else != None:
+		sstr += str(self.then_block)
+		if self.else_block != None:
 			if styleguide['LINE_BREAK_BEFORE_BLOCK_BRACE']:
 				sstr += str_nl_indent()
 			else:
 				sstr += ' '
 			sstr += 'else'
-			if isinstance(self.block_else, CStmtBlock) and styleguide['LINE_BREAK_BEFORE_BLOCK_BRACE']:
+			if isinstance(self.else_block, CStmtBlock) and styleguide['LINE_BREAK_BEFORE_BLOCK_BRACE']:
 				sstr += str_nl_indent()
 			else:
 				sstr += ' '
-			sstr += str(self.block_else)
+			sstr += str(self.else_block)
 		return sstr
 
 
 class CStmtWhile(CStmt):
-	def __init__(self, value_cond, block):
-		assert(isinstance(value_cond, CValue))
+	def __init__(self, condition, block):
+		assert(isinstance(condition, CValue))
 		assert(isinstance(block, CStmtBlock))
 		super().__init__()
-		self.value_cond = value_cond
+		self.condition = condition
 		self.block = block
 
 	def __str__(self):
 		sstr = str_nl_indent(self.nl)
-		sstr += "while (%s)" % str_cvalue(self.value_cond)
+		sstr += "while (%s)" % str_cvalue(self.condition)
 		if styleguide['LINE_BREAK_BEFORE_BLOCK_BRACE']:
 			sstr += str_nl_indent()
 		else:
@@ -1387,17 +1388,17 @@ class CStmtWhile(CStmt):
 
 
 class CStmtReturn(CStmt):
-	def __init__(self, value_retval):
-		if value_retval != None:
-			assert(isinstance(value_retval, CValue))
+	def __init__(self, return_value):
+		if return_value != None:
+			assert(isinstance(return_value, CValue))
 		super().__init__()
-		self.value_retval = value_retval
+		self.return_value = return_value
 
 	def __str__(self):
 		sstr = str_nl_indent(self.nl)
 		sstr += 'return'
-		if self.value_retval != None:
-			sstr += ' ' + str_cvalue(self.value_retval)
+		if self.return_value != None:
+			sstr += ' ' + str_cvalue(self.return_value)
 		return sstr + ";"
 
 
@@ -1430,7 +1431,7 @@ class CStmtContinue(CStmt):
 #	: clobbered registers/memory /* optional */
 #);
 
-class CStmtAsm(CStmt):
+class CStmtInlineAsm(CStmt):
 	def __init__(self, text, outputs, inputs, clobbers):
 		super().__init__()
 		assert(isinstance(text, str))
@@ -1469,7 +1470,7 @@ class CStmtAsm(CStmt):
 
 
 
-class CInsert(CStmt):
+class CRawText(CStmt):
 	def __init__(self, text):
 		super().__init__()
 		self.text = text
@@ -1479,7 +1480,7 @@ class CInsert(CStmt):
 		return self.text
 
 
-class CMacrodefinition():
+class CMacroDef():
 	def __init__(self, id, text=None):
 		assert(isinstance(id, str))
 		if text:
@@ -1498,7 +1499,7 @@ class CMacrodefinition():
 		return sstr
 
 
-class CMacrodefinitionValue():
+class CMacroDefValue():
 	def __init__(self, id, value):
 		assert(isinstance(id, str))
 		assert(isinstance(value, CValue))
@@ -1531,18 +1532,18 @@ class CMacroUndef():
 
 
 class CInclude():
-	def __init__(self, text, isglobal):
+	def __init__(self, text, is_system):
 		assert(isinstance(text, str))
-		assert(isinstance(isglobal, bool))
+		assert(isinstance(is_system, bool))
 		self.nl = 1  #!!! (because it is not CStmt...)
 		super().__init__()
 		self.text = text
-		self.isglobal = isglobal
+		self.is_system = is_system
 		self.mark = None
 
 	def __str__(self):
 		#sstr = str_nl_indent(self.nl)
-		if self.isglobal:
+		if self.is_system:
 			return "\n#include <%s>" % self.text
 		return "\n#include \"%s\"" % self.text
 
@@ -1553,7 +1554,7 @@ def str_cdef(x):
 
 
 # pairs = ("macro text", [<defs>])
-class CIfdefRegion():
+class CConditionalRegion():
 	def __init__(self, pairs, _else=None):
 		self.pairs = pairs
 		self._else = _else
