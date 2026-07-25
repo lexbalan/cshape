@@ -661,28 +661,6 @@ class CValueDereference(CValue):
 		return '*%s' % str_cvalue(self.value, ext_precedence=self.precedence)
 
 
-class CValueIncrement(CValue):
-	def __init__(self, value):
-		assert(isinstance(value, CValue))
-		super().__init__()
-		self.value = value
-		self.precedence = 13
-
-	def __str__(self):
-		return '++%s' % (str_cvalue(self.value, ext_precedence=self.precedence))
-
-
-class CValueDecrement(CValue):
-	def __init__(self, value):
-		assert(isinstance(value, CValue))
-		super().__init__()
-		self.value = value
-		self.precedence = 13
-
-	def __str__(self):
-		return '--%s' % str_cvalue(self.value, ext_precedence=self.precedence)
-
-
 class CValueUnaryPlus(CValue):
 	def __init__(self, value):
 		assert(isinstance(value, CValue))
