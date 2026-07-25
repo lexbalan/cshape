@@ -1,45 +1,8 @@
 
+
 nl_symbol = "\n"
 indent_symbol = "\t"
-
 indent_level = 0
-
-
-
-
-def indent_up():
-	global indent_level
-	indent_level = indent_level + 1
-
-
-def indent_down():
-	global indent_level
-	indent_level = indent_level - 1
-
-
-
-def set_nl_symbol(x):
-	global nl_symbol
-	nl_symbol = x
-
-
-
-def str_indent():
-	global indent_level
-	global indent_symbol
-	return indent_symbol * indent_level
-
-
-def str_nl_indent(nl=1):
-	s = nl_symbol * nl
-	if nl > 0:
-		s += str_indent()
-	return s
-
-
-
-
-
 
 
 
@@ -61,8 +24,35 @@ styles = {
 }
 
 
-# default style is legacy
 styleguide = legacy_style
+
+
+def indent_up():
+	global indent_level
+	indent_level = indent_level + 1
+
+
+def indent_down():
+	global indent_level
+	indent_level = indent_level - 1
+
+
+def set_nl_symbol(x):
+	global nl_symbol
+	nl_symbol = x
+
+
+def str_indent():
+	global indent_level
+	global indent_symbol
+	return indent_symbol * indent_level
+
+
+def str_nl_indent(nl=1):
+	s = nl_symbol * nl
+	if nl > 0:
+		s += str_indent()
+	return s
 
 
 def render(node, style='legacy', indent='\t', newline='\n'):
@@ -105,8 +95,6 @@ def with_space(s):
 	if s != '':
 		return ' ' + s
 	return ''
-
-
 
 
 def str_gcc_attributes(attributes):
