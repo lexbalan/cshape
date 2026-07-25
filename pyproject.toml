@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cshape"
-version = "0.1.0"
+version = "0.2.1"
 description = "A dependency-free C AST + printer: build a tree in Python, get C11 source back"
 readme = "README.md"
 license = "MIT"
